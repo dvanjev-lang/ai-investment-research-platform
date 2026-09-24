@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+botenv/
+
+# Environment
+.env
+.env.local
+.env.production
+*.env
+
+# Build
+.next/
+dist/
+build/
+out/
+
+# Database
+*.db
+*.sqlite
+
+# Misc
+.DS_Store
+*.log
+.pytest_cache/
+.mypy_cache/
+coverage/
+.turbo/
