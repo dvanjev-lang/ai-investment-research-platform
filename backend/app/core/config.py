@@ -4,12 +4,11 @@ from typing import List
 
 class Settings(BaseSettings):
     APP_SECRET_KEY: str = "dev-secret-change-in-production"
-    DEBUG: bool = True
-    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
+    ENVIRONMENT: str = "production"
 
+    # Optional — not needed in mock mode
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/investment_research"
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
 
     OPENAI_API_KEY: str = ""
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
@@ -20,10 +19,10 @@ class Settings(BaseSettings):
 
     DATA_PROVIDER: str = "mock"
 
+    # Accepts comma-separated string from env var, e.g. "https://foo.vercel.app,https://bar.com"
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
-        "https://your-production-domain.com",
     ]
 
     class Config:

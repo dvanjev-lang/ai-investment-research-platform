@@ -4,7 +4,6 @@ AI Investment Research Platform — FastAPI Application
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from app.api.v1 import companies, documents, research, valuation, health
 from app.core.config import settings
@@ -22,11 +21,12 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# Allow all origins in demo/mock mode; restrict in production with real auth
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
