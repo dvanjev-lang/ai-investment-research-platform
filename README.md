@@ -7,6 +7,8 @@ The platform is designed as a technical portfolio project demonstrating
 the intersection of Finance, AI Engineering, Data Engineering and
 Full-Stack Development.
 
+**[Live Demo](https://ai-investment-research-platform-one.vercel.app/dashboard)** — no installation required
+
 ---
 
 ## Overview
