@@ -334,8 +334,15 @@ class DocumentService:
             return [None] * len(texts)
 
         try:
+            import httpx
             from openai import AsyncOpenAI
-            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            client = AsyncOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                http_client=httpx.AsyncClient(
+                    transport=httpx.AsyncHTTPTransport(retries=2),
+                    timeout=45.0,
+                ),
+            )
             embeddings: list[Optional[np.ndarray]] = []
             batch_size = 100  # API limit: 2048, but keep batches manageable
             for i in range(0, len(texts), batch_size):

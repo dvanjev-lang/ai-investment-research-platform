@@ -151,8 +151,15 @@ async def _run_research_pipeline(
     # ------------------------------------------------------------------ #
     if settings.OPENAI_API_KEY:
         try:
+            import httpx
             from openai import AsyncOpenAI
-            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            client = AsyncOpenAI(
+                api_key=settings.OPENAI_API_KEY,
+                http_client=httpx.AsyncClient(
+                    transport=httpx.AsyncHTTPTransport(retries=2),
+                    timeout=45.0,
+                ),
+            )
 
             system_prompt = """You are a financial research analyst assistant for an institutional research platform.
 
