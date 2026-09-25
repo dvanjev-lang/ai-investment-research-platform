@@ -24,7 +24,7 @@ app = FastAPI(
 # Allow all origins in demo/mock mode; restrict in production with real auth
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

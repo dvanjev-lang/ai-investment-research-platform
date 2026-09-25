@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://ai-investment-research-platform-one.vercel.app",
     ]
 
     class Config:
