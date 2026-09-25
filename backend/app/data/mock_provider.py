@@ -131,6 +131,17 @@ MOCK_INCOME = {
         {"fiscal_year": 2021, "revenue": 168088, "gross_profit": 115856, "operating_income": 69916, "ebitda": 85000, "net_income": 61271, "eps_diluted": 8.05, "shares_outstanding": 7608, "interest_expense": 1373, "depreciation_amortization": 15000},
         {"fiscal_year": 2020, "revenue": 143015, "gross_profit": 96937, "operating_income": 52959, "ebitda": 65000, "net_income": 44281, "eps_diluted": 5.76, "shares_outstanding": 7683, "interest_expense": 1462, "depreciation_amortization": 12000},
     ],
+    "AAPL": [
+        {"fiscal_year": 2024, "revenue": 391035, "gross_profit": 180683, "operating_income": 123216, "ebitda": 134800, "net_income": 93736, "eps_diluted": 6.08, "shares_outstanding": 15408, "interest_expense": 3788, "depreciation_amortization": 11584},
+        {"fiscal_year": 2023, "revenue": 383285, "gross_profit": 169148, "operating_income": 114301, "ebitda": 125800, "net_income": 96995, "eps_diluted": 6.13, "shares_outstanding": 15813, "interest_expense": 3933, "depreciation_amortization": 11519},
+        {"fiscal_year": 2022, "revenue": 394328, "gross_profit": 170782, "operating_income": 119437, "ebitda": 130000, "net_income": 99803, "eps_diluted": 6.11, "shares_outstanding": 16326, "interest_expense": 2931, "depreciation_amortization": 11104},
+        {"fiscal_year": 2021, "revenue": 365817, "gross_profit": 152836, "operating_income": 108949, "ebitda": 120000, "net_income": 94680, "eps_diluted": 5.61, "shares_outstanding": 16865, "interest_expense": 2645, "depreciation_amortization": 11284},
+        {"fiscal_year": 2020, "revenue": 274515, "gross_profit": 104956, "operating_income": 66288, "ebitda": 77344, "net_income": 57411, "eps_diluted": 3.28, "shares_outstanding": 17528, "interest_expense": 2873, "depreciation_amortization": 11056},
+    ],
+    "AMZN": [
+        {"fiscal_year": 2023, "revenue": 574785, "gross_profit": 270012, "operating_income": 36852, "ebitda": 85000, "net_income": 30425, "eps_diluted": 2.90, "shares_outstanding": 10483, "interest_expense": 3182, "depreciation_amortization": 52000},
+        {"fiscal_year": 2022, "revenue": 513983, "gross_profit": 225152, "operating_income": 12248, "ebitda": 40000, "net_income": -2722, "eps_diluted": -0.27, "shares_outstanding": 10189, "interest_expense": 2085, "depreciation_amortization": 41921},
+    ],
 }
 
 # Balance sheets (in millions USD)
@@ -273,6 +284,7 @@ class MockDataProvider(FinancialDataProvider):
                 operating_expenses=op_ex,
                 operating_income=row["operating_income"],
                 ebitda=row["ebitda"],
+                depreciation_amortization=row.get("depreciation_amortization"),
                 net_income=row["net_income"],
                 eps_diluted=row["eps_diluted"],
                 shares_outstanding=row["shares_outstanding"],
@@ -314,6 +326,16 @@ class MockDataProvider(FinancialDataProvider):
             dteb = (bal.total_debt / inc.ebitda) if inc.ebitda and bal and bal.total_debt else None
             cr = (bal.total_current_assets / bal.total_current_liabilities) if bal and bal.total_current_liabilities else None
             fcf_m = (cf.free_cash_flow / inc.revenue) if cf and inc.revenue else None
+            # ROIC = NOPAT / Invested Capital
+            # NOPAT = Operating Income x (1 - tax_rate)  [EBIT is already after D&A]
+            # Invested Capital = Total Equity + Total Debt - Cash
+            assumed_tax = 0.21
+            if inc.operating_income and bal and bal.total_equity is not None and bal.total_debt is not None:
+                nopat = inc.operating_income * (1 - assumed_tax)
+                invested_capital = bal.total_equity + bal.total_debt - (bal.cash or 0)
+                roic = nopat / invested_capital if invested_capital > 0 else None
+            else:
+                roic = None
             # YoY growth
             rev_g = None
             if i + 1 < len(income) and income[i + 1].revenue:
@@ -327,6 +349,7 @@ class MockDataProvider(FinancialDataProvider):
                 ebitda_margin=em,
                 roa=roa,
                 roe=roe,
+                roic=roic,
                 debt_to_equity=dte,
                 debt_to_ebitda=dteb,
                 current_ratio=cr,

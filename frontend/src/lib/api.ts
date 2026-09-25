@@ -34,6 +34,11 @@ export const api = {
     return data as { ticker: string; peers: PeerCompany[] }
   },
 
+  getDCFDefaults: async (ticker: string) => {
+    const { data } = await client.get(`/api/v1/valuation/${ticker}/dcf/defaults`)
+    return data as DCFDefaultsResponse
+  },
+
   runDCF: async (ticker: string, assumptions: DCFAssumptions) => {
     const { data } = await client.post(`/api/v1/valuation/${ticker}/dcf`, assumptions)
     return data as DCFResponse
@@ -206,6 +211,7 @@ export interface PeerCompany {
 export interface DCFAssumptions {
   revenue_growth_rates: number[]
   ebitda_margin: number
+  da_pct_revenue: number
   tax_rate: number
   capex_pct_revenue: number
   nwc_change_pct_revenue: number
@@ -214,12 +220,36 @@ export interface DCFAssumptions {
   base_revenue: number
 }
 
+export interface DCFDefaultsResponse {
+  ticker: string
+  currency: string
+  defaults: DCFAssumptions
+  data_note: string
+  data_source: string
+  disclaimer: string
+}
+
+export interface DCFYearProjection {
+  year: number
+  revenue: number
+  ebitda: number
+  da: number
+  ebit: number
+  nopat: number
+  capex: number
+  delta_nwc: number
+  free_cash_flow: number
+  pv_fcf: number
+}
+
 export interface DCFScenario {
   name: string
   assumptions: DCFAssumptions
+  projections: DCFYearProjection[]
   projected_revenues: number[]
   projected_fcf: number[]
   terminal_value?: number
+  pv_terminal_value?: number
   enterprise_value?: number
   equity_value?: number
   implied_price?: number

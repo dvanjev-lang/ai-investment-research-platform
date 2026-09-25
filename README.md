@@ -1,208 +1,401 @@
 # AI Investment Research Platform
 
-A full-stack AI-powered investment research platform combining Python, FastAPI, Next.js, PostgreSQL, OpenAI, and RAG to analyze public-company financial data and source-backed corporate disclosures.
+A full-stack investment research platform combining financial modeling,
+AI-powered research, semantic document retrieval and agentic workflows.
 
-> **Disclaimer:** This platform provides informational and analytical content for educational and research purposes only. It does not constitute investment advice, a recommendation to buy or sell any security, or a guarantee of future performance.
+The platform is designed as a technical portfolio project demonstrating
+the intersection of Finance, AI Engineering, Data Engineering and
+Full-Stack Development.
 
 ---
 
 ## Overview
 
-This portfolio project demonstrates integration of:
+The platform allows users to research public companies through a single interface.
 
-- **Financial Analytics** — Income statements, balance sheets, cash flows, financial ratios, and valuation metrics
-- **AI/LLM Research** — GPT-4o–powered research assistant with structured outputs and source citations
-- **RAG Architecture** — Document upload → text extraction → chunking → embeddings → vector retrieval → cited answers
-- **Agentic Workflows** — Research Planner → Financial Data Agent → Document Researcher → Citation Validator pipeline
-- **DCF Valuation** — Configurable 3-scenario DCF with sensitivity analysis
-- **Professional UI** — Institutional-grade dark/light mode dashboard built with Next.js 14 + Tailwind + Recharts
+Users can:
 
----
+- Search and analyze companies
+- Explore financial statements
+- Analyze financial ratios
+- View historical price data
+- Compare companies with peers
+- Configure DCF valuations
+- Run scenario and sensitivity analysis
+- Upload financial documents
+- Search documents semantically
+- Ask AI-assisted research questions
+- Generate structured research reports
+- Inspect the research workflow and source citations
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14, TypeScript, React, Tailwind CSS, Recharts |
-| Backend | Python 3.11+, FastAPI, Pydantic |
-| Database | PostgreSQL (Supabase), SQLAlchemy, Alembic |
-| AI | OpenAI GPT-4o, text-embedding-3-small |
-| Vector DB | pgvector (PostgreSQL extension) |
-| Cloud | AWS-oriented (ECS/Fargate + S3 + CloudWatch) |
-| Deployment | Vercel (frontend), Docker (backend) |
+The system is designed for research and educational purposes and does
+not provide personalized investment advice or buy/sell recommendations.
 
 ---
 
-## Quick Start
+## Key Features
 
-### Prerequisites
+### Financial Analysis
 
-- Node.js 18+
-- Python 3.11+
-- PostgreSQL (or Supabase account)
-- OpenAI API key (optional for demo mode)
+- Multi-year financial statements
+- Revenue and profitability analysis
+- Financial ratios
+- Dynamic company financial data
+- DCF valuation
+- Scenario analysis
+- Sensitivity matrices
+- EBIT and NOPAT calculations
+- D&A integration
 
-### 1. Clone and setup
+### AI Research
 
-```bash
-git clone https://github.com/yourusername/ai-investment-research.git
-cd ai-investment-research
-```
+- OpenAI-powered research assistant
+- Embedding-based semantic search
+- Cosine similarity retrieval
+- TF-IDF fallback
+- Source-aware responses
+- `[Data]` vs `[Analysis]` distinction
+- Hallucination controls
 
-### 2. Backend
+### Agentic Research Workflow
 
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+The research workflow separates responsibilities across multiple specialized components:
 
-cp .env.example .env
-# Edit .env — set DATABASE_URL, OPENAI_API_KEY
-# DATA_PROVIDER=mock works without any API key
+1. Research Planner
+2. Financial Data Agent
+3. Document Research Agent
+4. Risk Analysis Agent
+5. Evidence Aggregator
+6. Citation Validator
+7. Research Writer
 
-uvicorn app.main:app --reload --port 8000
-```
+Each component performs actual research or analysis operations rather than representing a static UI trace.
 
-API docs: http://localhost:8000/api/docs
+### Document Intelligence
 
-### 3. Frontend
+- PDF / TXT / DOCX ingestion
+- Text extraction
+- tiktoken chunking (512-token chunks, 64-token overlap)
+- Embedding generation (`text-embedding-3-small`)
+- Semantic retrieval via cosine similarity
+- Context-aware, source-cited research
 
-```bash
-cd frontend
-npm install
+Uploaded documents are treated as untrusted content and are sanitized
+before being passed into the model context.
 
-cp .env.local.example .env.local
-# NEXT_PUBLIC_API_URL=http://localhost:8000
+### Security
 
-npm run dev
-```
+- Prompt-injection sanitization (12 pattern classes)
+- Untrusted document-content labeling in LLM context
+- Pydantic v2 input validation
+- 20 MB file size cap
+- No frontend API secrets
 
-App: http://localhost:3000
+### Testing
 
-### 4. Demo mode
+**97 automated tests** covering:
 
-Set `DATA_PROVIDER=mock` in `.env` to run entirely on demo data — no external APIs needed. The platform shows realistic financial data for NVIDIA, Microsoft, Apple, Amazon, JPMorgan, ASML, BlackRock, and AMD.
-
----
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `OPENAI_API_KEY` | OpenAI API key (GPT-4o + embeddings) | Optional |
-| `DATA_PROVIDER` | `mock` / `fmp` / `alpha_vantage` | Yes |
-| `FMP_API_KEY` | Financial Modeling Prep API key | If using FMP |
-| `APP_SECRET_KEY` | JWT secret key | Yes (prod) |
-
-### Frontend (`frontend/.env.local`)
-
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Backend API base URL |
+- DCF calculations and financial modeling
+- API routes (all endpoints)
+- RAG pipeline
+- Embedding and retrieval logic
+- Security sanitization
+- Prompt-injection protection
+- Validation
+- Research workflows
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Next.js Frontend                      │
-│  Dashboard │ Company │ Research │ Valuation │ Documents  │
-└──────────────────────┬──────────────────────────────────┘
-                       │ REST API
-┌──────────────────────▼──────────────────────────────────┐
-│                   FastAPI Backend                        │
-│  /companies  /research  /valuation  /documents          │
-│                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │ Data Provider│  │  AI/RAG      │  │  DCF Engine   │  │
-│  │ (Mock/FMP)   │  │  Pipeline    │  │  (3 scenarios)│  │
-│  └──────────────┘  └──────────────┘  └───────────────┘  │
-└──────────────────────┬──────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────┐
-│                  PostgreSQL / Supabase                   │
-│   companies │ financial_statements │ documents           │
-│   document_chunks (pgvector) │ research_reports          │
-└─────────────────────────────────────────────────────────┘
+                    ┌──────────────────────┐
+                    │      Next.js UI      │
+                    │  TypeScript / React  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │      FastAPI API     │
+                    │        Python        │
+                    └──────────┬───────────┘
+                               │
+             ┌─────────────────┼─────────────────┐
+             │                 │                 │
+             ▼                 ▼                 ▼
+      Financial Engine   Research Engine   Document Engine
+             │                 │                 │
+             │                 ▼                 ▼
+             │         Agentic Workflow       Chunking
+             │                 │             Embeddings
+             │                 ▼             Retrieval
+             │         Evidence Layer            │
+             │                 │                 │
+             └─────────────────┼─────────────────┘
+                               ▼
+                    ┌──────────────────────┐
+                    │      PostgreSQL      │
+                    │  Financial + Vector  │
+                    │         Data         │
+                    └──────────────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │      OpenAI API      │
+                    │  LLM + Embeddings    │
+                    └──────────────────────┘
+```
+
+### DCF Model
+
+The valuation engine calculates:
+
+```
+EBIT  = EBITDA − D&A
+
+NOPAT = EBIT × (1 − Tax Rate)
+
+FCF   = NOPAT − CapEx − ΔNWC
+```
+
+The model supports:
+
+- Base case
+- Conservative case
+- Optimistic case
+- WACC sensitivity matrix
+- Terminal growth sensitivity matrix
+
+Pydantic validators enforce: WACC > TGR, spread ≥ 1%, D&A < EBITDA margin.
+Invalid sensitivity cells return `null` rather than `0`.
+
+### RAG Pipeline
+
+Documents follow this pipeline:
+
+```
+Document
+   ↓
+Text Extraction (PDF / DOCX / TXT)
+   ↓
+Prompt-Injection Sanitization
+   ↓
+tiktoken Chunking (512 tokens, 64-token overlap)
+   ↓
+OpenAI text-embedding-3-small
+   ↓
+Vector Storage (numpy in-memory / pgvector in production)
+   ↓
+Cosine Similarity Search
+   ↓
+Top-k Relevant Chunks
+   ↓
+Research Workflow
+   ↓
+Source-Aware Response
+```
+
+A TF-IDF BM25 retrieval fallback is available when embedding
+infrastructure is unavailable. The response includes a `retrieval_mode`
+field (`"semantic"` or `"tfidf"`) so clients can display the retrieval
+method accurately.
+
+### Agentic Research
+
+The research workflow separates responsibilities into independent stages:
+
+```
+User Question
+      ↓
+Research Planner
+      ↓
+┌──────────────┬───────────────┬───────────────┐
+│  Financial   │  Document     │  Risk         │
+│  Data Agent  │  Research     │  Analysis     │
+└──────────────┴───────────────┴───────────────┘
+                     ↓
+              Evidence Aggregator
+                     ↓
+              Citation Validator
+                     ↓
+              Research Writer (GPT-4o)
+                     ↓
+               Final Response
+```
+
+Each stage performs real operations (API calls, semantic retrieval,
+LLM synthesis) and is independently observable via the `agent_trace`
+field in the API response.
+
+---
+
+## Technology Stack
+
+**Frontend**
+- Next.js 14 (App Router)
+- React 18
+- TypeScript
+- Tailwind CSS
+- Recharts
+- TanStack Query
+
+**Backend**
+- Python 3.11+
+- FastAPI
+- Pydantic v2
+
+**Data**
+- PostgreSQL
+- SQLAlchemy (async)
+- Alembic
+- Financial data provider abstraction (mock / FMP / Alpha Vantage)
+
+**AI**
+- OpenAI GPT-4o
+- OpenAI text-embedding-3-small
+- tiktoken
+- numpy (cosine similarity)
+
+**Infrastructure**
+- Docker Compose
+- Vercel (frontend)
+- Supabase / PostgreSQL
+- AWS-oriented architecture (ECS/Fargate + S3)
+
+---
+
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Company Analysis
+![Company Analysis](docs/screenshots/company-analysis.png)
+
+### DCF Valuation
+![DCF Valuation](docs/screenshots/dcf-valuation.png)
+
+### AI Research
+![AI Research](docs/screenshots/ai-research.png)
+
+### Document RAG
+![Document RAG](docs/screenshots/document-rag.png)
+
+---
+
+## Running Locally
+
+### Backend
+
+```bash
+cd backend
+
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+pip install -r requirements.txt
+
+# Copy and configure environment
+cp .env.example .env
+# DATA_PROVIDER=mock works without any external APIs
+# Set OPENAI_API_KEY to enable GPT-4o and real embeddings
+
+uvicorn app.main:app --reload
+```
+
+API: `http://localhost:8000`  
+Docs: `http://localhost:8000/api/docs`
+
+### Frontend
+
+```bash
+cd frontend
+
+npm install
+npm run dev
+```
+
+App: `http://localhost:3000`
+
+### Run tests
+
+```bash
+cd backend
+pytest tests/ -v
+# 97 tests, all passing
 ```
 
 ---
 
-## Features
+## Project Structure
 
-### Financial Analytics
-- Multi-year income statements, balance sheets, cash flow statements
-- 15+ financial ratios (profitability, liquidity, leverage, efficiency, growth)
-- Interactive price charts with 1m/3m/6m/1y/3y/5y periods
-- Peer comparison tables
-
-### AI Research
-- GPT-4o–powered research assistant
-- Source-cited answers with agent trace visibility
-- Structured research report generation (15 sections)
-- Document upload and RAG-based retrieval
-
-### Valuation
-- DCF analysis with configurable assumptions
-- Base / Conservative / Optimistic scenarios
-- WACC × Terminal Growth Rate sensitivity matrix
-
-### UI/UX
-- Institutional-grade dark/light mode
-- Responsive design
-- Persistent disclaimer on all pages
-- No buy/sell recommendations anywhere
-
----
-
-## Data Sources
-
-In demo mode: static illustrative data (clearly labeled).
-
-For live data, implement `FinancialDataProvider` for:
-- [Financial Modeling Prep](https://financialmodelingprep.com/) — comprehensive fundamentals
-- [Alpha Vantage](https://www.alphavantage.co/) — market data
-- [Polygon.io](https://polygon.io/) — real-time + historical prices
+```
+ai-investment-research/
+│
+├── backend/
+│   ├── app/
+│   │   ├── api/           # FastAPI route handlers
+│   │   ├── data/          # Data provider abstraction + mock
+│   │   ├── models/        # SQLAlchemy ORM models
+│   │   ├── schemas/       # Pydantic schemas
+│   │   ├── services/      # Document service (RAG + embeddings)
+│   │   └── main.py
+│   │
+│   ├── tests/             # 97 tests
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── app/           # Next.js App Router pages
+│   │   ├── components/    # React components
+│   │   └── lib/           # API client + types
+│   └── package.json
+│
+├── database/              # Alembic migrations
+├── docker-compose.yml
+├── README.md
+└── LICENSE
+```
 
 ---
 
-## Limitations
+## Design Principles
 
-- Demo data is static and illustrative, not sourced from live feeds
-- RAG pipeline uses simple keyword search in demo mode; production should use pgvector embeddings
-- No authentication in current version (add JWT + Supabase Auth for production)
-- DCF terminal value assumes perpetuity (Gordon Growth Model)
-- No real-time data streaming
+**Accuracy over generated output**  
+The system separates factual financial data from model-generated analysis.
+Financial figures are sourced from the data layer, not hallucinated by the LLM.
 
----
+**Evidence over unsupported claims**  
+Research responses are built around retrieved data and source citations.
+Every numerical claim is attributed to a specific source.
 
-## Roadmap
+**Modular AI**  
+Research responsibilities are separated into independently testable
+and observable components.
 
-- [ ] Live data provider (FMP or Polygon)
-- [ ] pgvector embeddings for semantic document search
-- [ ] Authentication (Supabase Auth + JWT)
-- [ ] AWS deployment (ECS/Fargate + S3 + CloudWatch)
-- [ ] Watchlist and saved companies
-- [ ] Export to PDF
-- [ ] More companies (500+ tickers)
+**Security by design**  
+Uploaded documents are treated as untrusted input and sanitized before
+entering the model context.
 
----
-
-## Compliance Note
-
-This platform is built as a portfolio / educational project. It explicitly avoids providing:
-- Buy/sell recommendations
-- Target prices
-- Personalized investment advice
-- Guaranteed return scenarios
-
-All scenario analyses are clearly labeled as illustrative assumptions.
+**No investment recommendations**  
+The platform is designed for research and analysis only. It explicitly
+avoids buy/sell recommendations, target prices, and personalized investment advice.
 
 ---
 
-*Built to demonstrate financial analytics, AI engineering, and full-stack development capabilities.*
+## Disclaimer
+
+This project is an educational and technical demonstration.
+
+It does not constitute financial advice, investment advice,
+recommendations, or an offer to buy or sell securities.
+
+Financial calculations and AI-generated analysis should be independently
+verified before being used for any real-world financial decision.
+
+---
+
+## Author
+
+**Daniel van Jeveren**  
+Finance × AI × Software Engineering

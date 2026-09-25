@@ -1,13 +1,11 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import Optional
-import uuid
-import io
+
+from app.services.document_service import document_service
 
 router = APIRouter()
 
-# In-memory store for demo (replace with DB + S3 in production)
-_document_store: dict = {}
-_chunk_store: dict = {}
+_ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx"}
+_MAX_FILE_BYTES = 20 * 1024 * 1024  # 20 MB
 
 
 @router.post("/upload")
@@ -20,57 +18,40 @@ async def upload_document(
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
 
-    allowed = {".pdf", ".txt", ".docx"}
-    ext = "." + file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-    if ext not in allowed:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+    ext = ("." + file.filename.rsplit(".", 1)[-1].lower()) if "." in file.filename else ""
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(_ALLOWED_EXTENSIONS)}",
+        )
 
     content = await file.read()
-    doc_id = str(uuid.uuid4())
+    if len(content) > _MAX_FILE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(content) // 1024} KB). Maximum is {_MAX_FILE_BYTES // 1024 // 1024} MB.",
+        )
 
-    # Extract text (basic demo — full pipeline: PyPDF2, chunking, embeddings)
-    text = ""
-    if ext == ".txt":
-        text = content.decode("utf-8", errors="ignore")
-    elif ext == ".pdf":
-        try:
-            import PyPDF2
-            reader = PyPDF2.PdfReader(io.BytesIO(content))
-            text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        except Exception as e:
-            text = f"PDF extraction partial: {str(e)}"
-
-    _document_store[doc_id] = {
-        "id": doc_id,
-        "ticker": ticker.upper(),
-        "name": file.filename,
-        "document_type": document_type,
-        "reporting_period": reporting_period,
-        "text": text[:50000],  # cap for demo
-        "word_count": len(text.split()),
-        "is_processed": True,
-    }
-
-    return {
-        "document_id": doc_id,
-        "ticker": ticker.upper(),
-        "name": file.filename,
-        "word_count": len(text.split()),
-        "status": "processed",
-        "note": "Demo mode: document stored in memory. Use persistent storage in production.",
-    }
+    result = await document_service.add_document(
+        content=content,
+        filename=file.filename,
+        ticker=ticker,
+        doc_type=document_type,
+        period=reporting_period,
+    )
+    return result
 
 
 @router.get("/{ticker}")
 async def list_documents(ticker: str):
     ticker = ticker.upper()
-    docs = [v for v in _document_store.values() if v["ticker"] == ticker]
+    docs = document_service.get_documents(ticker)
     return {"ticker": ticker, "documents": docs}
 
 
 @router.get("/document/{doc_id}")
 async def get_document(doc_id: str):
-    doc = _document_store.get(doc_id)
+    doc = document_service.get_document(doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc

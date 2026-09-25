@@ -12,6 +12,7 @@ class IncomeStatementRow(BaseModel):
     operating_expenses: Optional[float] = None
     operating_income: Optional[float] = None
     ebitda: Optional[float] = None
+    depreciation_amortization: Optional[float] = None
     net_income: Optional[float] = None
     eps_diluted: Optional[float] = None
     shares_outstanding: Optional[float] = None
