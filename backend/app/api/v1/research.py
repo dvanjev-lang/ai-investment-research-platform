@@ -151,14 +151,11 @@ async def _run_research_pipeline(
     # ------------------------------------------------------------------ #
     if settings.OPENAI_API_KEY:
         try:
-            import httpx
             from openai import AsyncOpenAI
             client = AsyncOpenAI(
                 api_key=settings.OPENAI_API_KEY,
-                http_client=httpx.AsyncClient(
-                    transport=httpx.AsyncHTTPTransport(retries=2),
-                    timeout=45.0,
-                ),
+                timeout=45.0,
+                max_retries=2,
             )
 
             system_prompt = """You are a financial research analyst assistant for an institutional research platform.
@@ -219,7 +216,7 @@ Respond in clear, professional language suitable for a financial analyst audienc
             agent_trace.append(AgentStep(
                 agent="Research Writer",
                 action="Fallback answer (OpenAI unavailable)",
-                result_summary=str(e),
+                result_summary=f"{type(e).__name__}: {str(e)}",
                 sources_consulted=[],
             ))
     else:
