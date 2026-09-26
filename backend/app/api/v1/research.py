@@ -212,11 +212,17 @@ Respond in clear, professional language suitable for a financial analyst audienc
                 sources_consulted=[settings.OPENAI_CHAT_MODEL],
             ))
         except Exception as e:
+            import socket
+            try:
+                addrs = socket.getaddrinfo("api.openai.com", 443)
+                dns_info = f"DNS OK ({addrs[0][4][0]})"
+            except Exception as dns_e:
+                dns_info = f"DNS FAIL ({dns_e})"
             answer = _fallback_answer(ticker, question, financial_context)
             agent_trace.append(AgentStep(
                 agent="Research Writer",
                 action="Fallback answer (OpenAI unavailable)",
-                result_summary=f"{type(e).__name__}: {str(e)}",
+                result_summary=f"{type(e).__name__}: {str(e)} | {dns_info}",
                 sources_consulted=[],
             ))
     else:
