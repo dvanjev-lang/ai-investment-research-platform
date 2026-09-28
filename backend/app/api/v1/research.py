@@ -151,12 +151,8 @@ async def _run_research_pipeline(
     # ------------------------------------------------------------------ #
     if settings.OPENAI_API_KEY:
         try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(
-                api_key=settings.OPENAI_API_KEY,
-                timeout=45.0,
-                max_retries=2,
-            )
+            import asyncio
+            from openai import OpenAI
 
             system_prompt = """You are a financial research analyst assistant for an institutional research platform.
 
@@ -190,16 +186,21 @@ Respond in clear, professional language suitable for a financial analyst audienc
                 f"If the data is insufficient, say so explicitly."
             )
 
-            response = await client.chat.completions.create(
-                model=settings.OPENAI_CHAT_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_msg},
-                ],
-                temperature=0.1,
-                max_tokens=1500,
-            )
-            answer = response.choices[0].message.content or ""
+            def _call_openai_sync() -> str:
+                client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=45.0, max_retries=2)
+                response = client.chat.completions.create(
+                    model=settings.OPENAI_CHAT_MODEL,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    temperature=0.1,
+                    max_tokens=1500,
+                )
+                return response.choices[0].message.content or ""
+
+            loop = asyncio.get_event_loop()
+            answer = await loop.run_in_executor(None, _call_openai_sync)
             agent_trace.append(AgentStep(
                 agent="Research Writer",
                 action=f"Synthesise with {settings.OPENAI_CHAT_MODEL}",
@@ -212,17 +213,11 @@ Respond in clear, professional language suitable for a financial analyst audienc
                 sources_consulted=[settings.OPENAI_CHAT_MODEL],
             ))
         except Exception as e:
-            import socket
-            try:
-                addrs = socket.getaddrinfo("api.openai.com", 443)
-                dns_info = f"DNS OK ({addrs[0][4][0]})"
-            except Exception as dns_e:
-                dns_info = f"DNS FAIL ({dns_e})"
             answer = _fallback_answer(ticker, question, financial_context)
             agent_trace.append(AgentStep(
                 agent="Research Writer",
                 action="Fallback answer (OpenAI unavailable)",
-                result_summary=f"{type(e).__name__}: {str(e)} | {dns_info}",
+                result_summary=f"{type(e).__name__}: {str(e)}",
                 sources_consulted=[],
             ))
     else:
