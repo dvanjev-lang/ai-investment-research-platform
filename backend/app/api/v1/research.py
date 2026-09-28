@@ -191,6 +191,7 @@ Respond in clear, professional language suitable for a financial analyst audienc
                 # We call the OpenAI chat completions API directly via urllib.
                 import json as _json
                 import ssl as _ssl
+                import time as _time
                 import urllib.error
                 import urllib.request
 
@@ -205,18 +206,30 @@ Respond in clear, professional language suitable for a financial analyst audienc
                     "max_tokens": 1500,
                 }).encode()
 
-                req = urllib.request.Request(
-                    "https://api.openai.com/v1/chat/completions",
-                    data=payload,
-                    headers={
-                        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, context=ctx, timeout=45) as resp:
-                    data = _json.loads(resp.read())
-                return data["choices"][0]["message"]["content"] or ""
+                def _make_request() -> dict:
+                    req = urllib.request.Request(
+                        "https://api.openai.com/v1/chat/completions",
+                        data=payload,
+                        headers={
+                            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                            "Content-Type": "application/json",
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, context=ctx, timeout=45) as resp:
+                        return _json.loads(resp.read())
+
+                for attempt in range(3):
+                    try:
+                        data = _make_request()
+                        return data["choices"][0]["message"]["content"] or ""
+                    except urllib.error.HTTPError as e:
+                        if e.code == 429:
+                            retry_after = int(e.headers.get("Retry-After", 20))
+                            _time.sleep(retry_after)
+                            continue
+                        raise
+                raise RuntimeError("OpenAI request failed after 3 attempts (rate limited)")
 
             loop = asyncio.get_event_loop()
             answer = await loop.run_in_executor(None, _call_openai_urllib)
