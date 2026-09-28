@@ -152,9 +152,6 @@ async def _run_research_pipeline(
     if settings.OPENAI_API_KEY:
         try:
             import asyncio
-            import ssl
-            import httpx
-            from openai import OpenAI
 
             system_prompt = """You are a financial research analyst assistant for an institutional research platform.
 
@@ -188,31 +185,41 @@ Respond in clear, professional language suitable for a financial analyst audienc
                 f"If the data is insufficient, say so explicitly."
             )
 
-            def _call_openai_sync() -> str:
-                # Railway's network drops httpx connections that negotiate HTTP/2 via ALPN.
-                # urllib (stdlib) works fine. Force httpx to HTTP/1.1 only via custom SSL
-                # context that excludes the h2 ALPN protocol — matching urllib behaviour.
-                ssl_ctx = ssl.create_default_context()
-                ssl_ctx.set_alpn_protocols(["http/1.1"])
-                http_client = httpx.Client(verify=ssl_ctx, timeout=45.0)
-                client = OpenAI(
-                    api_key=settings.OPENAI_API_KEY,
-                    http_client=http_client,
-                    max_retries=2,
-                )
-                response = client.chat.completions.create(
-                    model=settings.OPENAI_CHAT_MODEL,
-                    messages=[
+            def _call_openai_urllib() -> str:
+                # httpx (used by the openai SDK) fails on Railway due to connection-level
+                # incompatibility. urllib (Python stdlib) is confirmed working (HTTP 200).
+                # We call the OpenAI chat completions API directly via urllib.
+                import json as _json
+                import ssl as _ssl
+                import urllib.error
+                import urllib.request
+
+                ctx = _ssl.create_default_context()
+                payload = _json.dumps({
+                    "model": settings.OPENAI_CHAT_MODEL,
+                    "messages": [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_msg},
                     ],
-                    temperature=0.1,
-                    max_tokens=1500,
+                    "temperature": 0.1,
+                    "max_tokens": 1500,
+                }).encode()
+
+                req = urllib.request.Request(
+                    "https://api.openai.com/v1/chat/completions",
+                    data=payload,
+                    headers={
+                        "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    method="POST",
                 )
-                return response.choices[0].message.content or ""
+                with urllib.request.urlopen(req, context=ctx, timeout=45) as resp:
+                    data = _json.loads(resp.read())
+                return data["choices"][0]["message"]["content"] or ""
 
             loop = asyncio.get_event_loop()
-            answer = await loop.run_in_executor(None, _call_openai_sync)
+            answer = await loop.run_in_executor(None, _call_openai_urllib)
             agent_trace.append(AgentStep(
                 agent="Research Writer",
                 action=f"Synthesise with {settings.OPENAI_CHAT_MODEL}",
