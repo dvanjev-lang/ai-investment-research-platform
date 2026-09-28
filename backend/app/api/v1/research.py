@@ -190,12 +190,11 @@ Respond in clear, professional language suitable for a financial analyst audienc
 
             def _call_openai_sync() -> str:
                 # Railway's network drops httpx connections that negotiate HTTP/2 via ALPN.
-                # urllib (stdlib) works fine. Force httpx to HTTP/1.1 only via a custom SSL
-                # context that excludes the h2 ALPN protocol — matching urllib's behaviour.
+                # urllib (stdlib) works fine. Force httpx to HTTP/1.1 only via custom SSL
+                # context that excludes the h2 ALPN protocol — matching urllib behaviour.
                 ssl_ctx = ssl.create_default_context()
                 ssl_ctx.set_alpn_protocols(["http/1.1"])
-                transport = httpx.HTTPTransport(ssl_context=ssl_ctx)
-                http_client = httpx.Client(transport=transport, timeout=45.0)
+                http_client = httpx.Client(verify=ssl_ctx, timeout=45.0)
                 client = OpenAI(
                     api_key=settings.OPENAI_API_KEY,
                     http_client=http_client,
