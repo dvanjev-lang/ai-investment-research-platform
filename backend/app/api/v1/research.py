@@ -152,6 +152,8 @@ async def _run_research_pipeline(
     if settings.OPENAI_API_KEY:
         try:
             import asyncio
+            import ssl
+            import httpx
             from openai import OpenAI
 
             system_prompt = """You are a financial research analyst assistant for an institutional research platform.
@@ -187,7 +189,18 @@ Respond in clear, professional language suitable for a financial analyst audienc
             )
 
             def _call_openai_sync() -> str:
-                client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=45.0, max_retries=2)
+                # Railway's network drops httpx connections that negotiate HTTP/2 via ALPN.
+                # urllib (stdlib) works fine. Force httpx to HTTP/1.1 only via a custom SSL
+                # context that excludes the h2 ALPN protocol — matching urllib's behaviour.
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.set_alpn_protocols(["http/1.1"])
+                transport = httpx.HTTPTransport(ssl_context=ssl_ctx)
+                http_client = httpx.Client(transport=transport, timeout=45.0)
+                client = OpenAI(
+                    api_key=settings.OPENAI_API_KEY,
+                    http_client=http_client,
+                    max_retries=2,
+                )
                 response = client.chat.completions.create(
                     model=settings.OPENAI_CHAT_MODEL,
                     messages=[
