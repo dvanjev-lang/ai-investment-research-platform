@@ -149,7 +149,7 @@ async def _run_research_pipeline(
     # ------------------------------------------------------------------ #
     # Step 4: Research Writer — LLM synthesis over retrieved evidence     #
     # ------------------------------------------------------------------ #
-    if settings.OPENAI_API_KEY:
+    if settings.ANTHROPIC_API_KEY:
         try:
             import asyncio
 
@@ -185,70 +185,35 @@ Respond in clear, professional language suitable for a financial analyst audienc
                 f"If the data is insufficient, say so explicitly."
             )
 
-            def _call_openai_urllib() -> str:
-                # httpx (used by the openai SDK) fails on Railway due to connection-level
-                # incompatibility. urllib (Python stdlib) is confirmed working (HTTP 200).
-                # We call the OpenAI chat completions API directly via urllib.
-                import json as _json
-                import ssl as _ssl
-                import time as _time
-                import urllib.error
-                import urllib.request
-
-                ctx = _ssl.create_default_context()
-                payload = _json.dumps({
-                    "model": settings.OPENAI_CHAT_MODEL,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.1,
-                    "max_tokens": 1500,
-                }).encode()
-
-                def _make_request() -> dict:
-                    req = urllib.request.Request(
-                        "https://api.openai.com/v1/chat/completions",
-                        data=payload,
-                        headers={
-                            "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
-                            "Content-Type": "application/json",
-                        },
-                        method="POST",
-                    )
-                    with urllib.request.urlopen(req, context=ctx, timeout=45) as resp:
-                        return _json.loads(resp.read())
-
-                for attempt in range(3):
-                    try:
-                        data = _make_request()
-                        return data["choices"][0]["message"]["content"] or ""
-                    except urllib.error.HTTPError as e:
-                        if e.code == 429:
-                            retry_after = int(e.headers.get("Retry-After", 20))
-                            _time.sleep(retry_after)
-                            continue
-                        raise
-                raise RuntimeError("OpenAI request failed after 3 attempts (rate limited)")
+            def _call_anthropic() -> str:
+                import anthropic as _anthropic
+                client = _anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+                message = client.messages.create(
+                    model=settings.ANTHROPIC_MODEL,
+                    max_tokens=1500,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_msg}],
+                )
+                return message.content[0].text
 
             loop = asyncio.get_event_loop()
-            answer = await loop.run_in_executor(None, _call_openai_urllib)
+            answer = await loop.run_in_executor(None, _call_anthropic)
             agent_trace.append(AgentStep(
                 agent="Research Writer",
-                action=f"Synthesise with {settings.OPENAI_CHAT_MODEL}",
+                action=f"Synthesise with {settings.ANTHROPIC_MODEL}",
                 result_summary=(
                     f"Answer generated from {len(citations)} source(s): "
                     f"{'financial data' if financial_context else ''}"
                     f"{', ' if financial_context and doc_context else ''}"
                     f"{'document excerpts' if doc_context else ''}"
                 ),
-                sources_consulted=[settings.OPENAI_CHAT_MODEL],
+                sources_consulted=[settings.ANTHROPIC_MODEL],
             ))
         except Exception as e:
             answer = _fallback_answer(ticker, question, financial_context)
             agent_trace.append(AgentStep(
                 agent="Research Writer",
-                action="Fallback answer (OpenAI unavailable)",
+                action="Fallback answer (Anthropic unavailable)",
                 result_summary=f"{type(e).__name__}: {str(e)}",
                 sources_consulted=[],
             ))
@@ -256,10 +221,10 @@ Respond in clear, professional language suitable for a financial analyst audienc
         answer = _fallback_answer(ticker, question, financial_context)
         agent_trace.append(AgentStep(
             agent="Research Writer",
-            action="Demo answer (no OpenAI key)",
+            action="Demo answer (no Anthropic key)",
             result_summary=(
-                "OpenAI API key not configured. Displaying structured data summary. "
-                "Set OPENAI_API_KEY for AI-generated analysis."
+                "Anthropic API key not configured. Displaying structured data summary. "
+                "Set ANTHROPIC_API_KEY for AI-generated analysis."
             ),
             sources_consulted=[],
         ))
@@ -287,7 +252,7 @@ Respond in clear, professional language suitable for a financial analyst audienc
         data_through="Demo data (illustrative)",
         disclaimer=DISCLAIMER,
         confidence_note=(
-            f"{'AI analysis with GPT-4o.' if settings.OPENAI_API_KEY else 'Demo mode — configure OPENAI_API_KEY for AI analysis.'} "
+            f"{'AI analysis with Claude.' if settings.ANTHROPIC_API_KEY else 'Demo mode — configure ANTHROPIC_API_KEY for AI analysis.'} "
             f"{retrieval_note}"
             f"Latency: {latency}ms."
         ),
@@ -299,7 +264,7 @@ def _fallback_answer(ticker: str, question: str, context: str) -> str:
         f"**Research Summary for {ticker}**\n\n"
         f"Based on available structured financial data:\n\n"
         f"{context if context else '*(No financial data available for this ticker)*'}\n\n"
-        f"*Note: To enable AI-generated analysis, configure the `OPENAI_API_KEY` environment variable. "
+        f"*Note: To enable AI-generated analysis, configure the `ANTHROPIC_API_KEY` environment variable. "
         f"This is a demo response showing the structured data context that would be provided to the LLM.*"
     )
 
