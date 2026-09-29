@@ -298,9 +298,19 @@ export interface ResearchQueryRequest {
   include_financial_data?: boolean
 }
 
+export interface StructuredAnalysis {
+  summary: string
+  key_findings: string[]
+  risks: string[]
+  data_gaps: string[]
+  verdict: 'Positive' | 'Neutral' | 'Cautious' | 'Insufficient Data'
+  confidence: 'High' | 'Medium' | 'Low'
+}
+
 export interface ResearchQueryResponse {
   question: string
   answer: string
+  structured_analysis?: StructuredAnalysis
   citations: Citation[]
   agent_trace: AgentStep[]
   data_through?: string

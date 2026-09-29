@@ -20,6 +20,15 @@ class AgentStep(BaseModel):
     sources_consulted: List[str] = []
 
 
+class StructuredAnalysis(BaseModel):
+    summary: str
+    key_findings: List[str]
+    risks: List[str]
+    data_gaps: List[str]
+    verdict: str   # "Positive" | "Neutral" | "Cautious" | "Insufficient Data"
+    confidence: str  # "High" | "Medium" | "Low"
+
+
 class ResearchQueryRequest(BaseModel):
     ticker: str
     question: str
@@ -30,6 +39,7 @@ class ResearchQueryRequest(BaseModel):
 class ResearchQueryResponse(BaseModel):
     question: str
     answer: str
+    structured_analysis: Optional[StructuredAnalysis] = None
     citations: List[Citation] = []
     agent_trace: List[AgentStep] = []
     data_through: Optional[str] = None
