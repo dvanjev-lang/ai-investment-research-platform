@@ -30,9 +30,11 @@ export default function CompanyPage() {
   const ticker = (params.ticker as string).toUpperCase()
   const [activeTab, setActiveTab] = useState('overview')
 
-  const { data: profile, isLoading, error } = useQuery({
+  const { data: profile, isLoading, error, refetch } = useQuery({
     queryKey: ['company', ticker],
     queryFn: () => api.getCompanyProfile(ticker),
+    retry: 2,
+    staleTime: 0,
   })
 
   if (isLoading) {
@@ -51,7 +53,13 @@ export default function CompanyPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
           <p className="text-muted-foreground">Could not load data for {ticker}</p>
-          <Link href="/dashboard" className="text-sm text-primary hover:underline">
+          <button
+            onClick={() => refetch()}
+            className="text-sm text-primary hover:underline block mx-auto"
+          >
+            ↺ Try again
+          </button>
+          <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline block">
             ← Back to Dashboard
           </Link>
         </div>
